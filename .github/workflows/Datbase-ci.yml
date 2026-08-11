@@ -1,0 +1,58 @@
+name: Database CI
+
+# Runs on every push and pull request to main.
+# Spins up a fresh PostgreSQL instance and runs the full pipeline:
+# create tables -> seed data -> business queries.
+# If any step fails (bad SQL, a violated constraint, etc.), the build fails.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-database:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pharmaceutical_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+
+      - name: Create tables
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d pharmaceutical_db -f 01_create_tables.sql
+
+      - name: Insert seed data
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d pharmaceutical_db -f 02_insertdate.sql
+
+      - name: Run business queries
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d pharmaceutical_db -f 03_queries.sql
+
+      - name: Run data-integrity assertions
+        env:
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d pharmaceutical_db -f 04_assertions.sql
