@@ -1,0 +1,18 @@
+# VS Code
+.vscode/
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
+
+# PostgreSQL local files
+*.dump
+*.backup
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
